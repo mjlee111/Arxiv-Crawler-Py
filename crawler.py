@@ -1,11 +1,6 @@
 from bs4 import BeautifulSoup as bs
-import urllib.request
-import re
-from selenium import webdriver
 import pandas as pd
 import datetime
-import os
-import getpass
 import requests
 import time
 
