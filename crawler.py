@@ -4,6 +4,24 @@ import datetime
 import requests
 import time
 
+def get_citation_count(arxiv_url):
+    try:
+        arxiv_id = arxiv_url.split('/abs/')[-1].split('v')[0]
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        api_url = f"https://api.semanticscholar.org/graph/v1/paper/arXiv:{arxiv_id}?fields=citationCount"
+        response = requests.get(api_url, headers=headers)
+        
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('citationCount', 0)
+        return 0
+    except Exception as e:
+        print(f"\rError getting citation for {arxiv_id}: {str(e)}", end='')
+        return 0
+
 def get_arxiv_papers(search_query, start_year, end_year, max_results=100):
     unlimited = max_results == -1  
     if unlimited:
@@ -39,6 +57,8 @@ def get_arxiv_papers(search_query, start_year, end_year, max_results=100):
                         'summary': entry.summary.text.replace('\n', ' ').strip(),
                         'link': entry.id.text
                     }
+                    time.sleep(1)
+                    paper['citations'] = get_citation_count(entry.id.text)
                     papers.append(paper)
             except AttributeError:
                 continue
@@ -69,8 +89,10 @@ def validate_year(year_str, year_type):
 
 def save_to_csv(papers, filename='arxiv_papers.csv'):
     df = pd.DataFrame(papers)
+    df = df.sort_values(by='citations', ascending=False)
     df.to_csv(filename, index=False, encoding='utf-8-sig')
     print(f'File saved: {filename}')
+    print(f'Papers are sorted by citation count (highest to lowest)')
     print("----------------------------------------------------------")
 
 def main():
