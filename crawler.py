@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 import requests
 import time
+import threading
 
 def get_citation_count(arxiv_url):
     try:
@@ -34,8 +35,21 @@ def get_arxiv_papers(search_query, start_year, end_year, max_results=100):
     
     papers = []
     start = 0
+    stop_crawling = False
     
-    while unlimited or len(papers) < max_results:
+    def check_input():
+        nonlocal stop_crawling
+        while True:
+            if input().lower() == 'q':
+                stop_crawling = True
+                break
+    
+    input_thread = threading.Thread(target=check_input, daemon=True)
+    input_thread.start()
+    
+    print("\nType 'q' and press Enter to stop crawling...")
+    
+    while (unlimited or len(papers) < max_results) and not stop_crawling:
         current_url = base_url.format(full_query, start, 100)
         response = requests.get(current_url)
         soup = bs(response.content, 'xml')
@@ -45,6 +59,9 @@ def get_arxiv_papers(search_query, start_year, end_year, max_results=100):
             break
             
         for entry in entries:
+            if stop_crawling:
+                break
+                
             try:
                 pub_date = datetime.datetime.strptime(entry.published.text.split('T')[0], '%Y-%m-%d')
                 pub_year = pub_date.year
@@ -60,16 +77,30 @@ def get_arxiv_papers(search_query, start_year, end_year, max_results=100):
                     time.sleep(1)
                     paper['citations'] = get_citation_count(entry.id.text)
                     papers.append(paper)
+                    
+                    if not unlimited and len(papers) >= max_results:
+                        stop_crawling = True
+                        break
+                    
+                    print(f'\rCurrently found {len(papers)} papers...', end='')
             except AttributeError:
                 continue
-                
-            if not unlimited and len(papers) >= max_results:
-                return papers
-                
-            print(f'\rCurrently found {len(papers)} papers...', end='')
         
-        time.sleep(3)
-        start += 100
+        if not stop_crawling:
+            time.sleep(3)
+            start += 100
+    
+    if stop_crawling:
+        print("\nCrawling stopped by user.")
+        while True:
+            save_choice = input("Do you want to save the currently collected papers? (y/n): ").lower()
+            if save_choice in ['y', 'n']:
+                break
+            print("Please enter 'y' or 'n'")
+        
+        if save_choice == 'y':
+            return papers
+        return []
     
     print() 
     return papers
@@ -126,6 +157,11 @@ def main():
     
     print("Crawling...")
     papers = get_arxiv_papers(search_query, start_year, end_year, max_results)
+    
+    if not papers:
+        print("Crawling cancelled. No data saved.")
+        return
+        
     print(f"Found {len(papers)} papers.")
     print("----------------------------------------------------------")
     
