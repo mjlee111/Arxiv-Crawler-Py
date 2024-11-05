@@ -60,7 +60,7 @@ This repository contains two Python scripts:
 
 ## Usage
 `crawler.py`
-```python 
+```bash
 $ python3 crawler.py
 # Follow the interactive prompts:
 # 1. Enter search topic
@@ -70,7 +70,7 @@ $ python3 crawler.py
 ``` 
 
 `csv_to_markdown_table.py`
-```python
+```bash
 # With custom markdown filename
 $ python3 csv_to_markdown_table.py input.csv output.md
 
